@@ -1,9 +1,9 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
+	"id": "better-plugins-page",
+	"name": "Better Plugins Page",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "This is a sample plugin for Obsidian. This plugin demonstrates some of the capabilities of the Obsidian API.",
+	"description": "Better Plugins Page for Obsidian, adding filtering functions",
 	"author": "HananoshikaYomaru",
 	"authorUrl": "https://yomaru.dev",
 	"fundingUrl": {

@@ -6,45 +6,7 @@ import { State } from "@/util/State";
 import { Plugin } from "obsidian";
 import { z } from "zod";
 
-// the setting of slider
-export const nodeSize = {
-	min: 1,
-	max: 10,
-	step: 0.1,
-	default: 3,
-};
-
-// export type BaseFilterSettings = Prettify<
-// 	z.TypeOf<typeof BaseFilterSettingsSchema>
-// >;
-
-// export type LocalFilterSetting = Prettify<
-// 	z.TypeOf<typeof LocalFilterSettingSchema>
-// >;
-
-// export type GroupSettings = Prettify<z.TypeOf<typeof GroupSettingsSchema>>;
-
-// export type BaseDisplaySettings = Prettify<
-// 	z.TypeOf<typeof BaseDisplaySettingsSchema>
-// >;
-
-// export type LocalDisplaySettings = Prettify<
-// 	z.TypeOf<typeof LocalDisplaySettingsSchema>
-// >;
-
-// export type GlobalGraphSettings = Prettify<
-// 	z.TypeOf<typeof GlobalGraphSettingsSchema>
-// >;
-
-// export type LocalGraphSettings = Prettify<
-// 	z.TypeOf<typeof LocalGraphSettingsSchema>
-// >;
-
-// export type SavedSetting = Prettify<z.TypeOf<typeof SavedSettingSchema>>;
-
 export type Setting = Prettify<z.TypeOf<typeof SettingSchema>>;
-
-// export type GraphSetting = Exclude<SavedSetting["setting"], undefined>;
 
 const corruptedMessage =
 	"The setting is corrupted. You will not be able to save the setting. Please backup your data.json, remove it and reload the plugin. Then migrate your old setting back.";
@@ -54,7 +16,10 @@ const corruptedMessage =
  */
 export class MySettingManager implements ISettingManager<Setting> {
 	private plugin: Plugin;
-	private setting: State<Setting> = new State(DEFAULT_SETTING);
+	/**
+	 * @remarks this setting is exposed but directly accessing this value could be dangerous.
+	 */
+	setting: State<Setting> = new State(DEFAULT_SETTING);
 	private asyncQueue = new AsyncQueue();
 
 	/**
@@ -95,7 +60,7 @@ export class MySettingManager implements ISettingManager<Setting> {
 		// load the data, this can be null if the plugin is used for the first time
 		const loadedData = (await this.plugin.loadData()) as unknown | null;
 
-		console.log("loaded: ", loadedData);
+		// console.log("loaded: ", loadedData);
 
 		// if the data is null, then we need to initialize the data
 		if (!loadedData) {
@@ -115,7 +80,7 @@ export class MySettingManager implements ISettingManager<Setting> {
 			return this.setting.value;
 		}
 
-		console.log("parsed loaded data successfully");
+		// console.log("parsed loaded data successfully");
 
 		this.setting.value = result.data;
 		return this.setting.value;
@@ -139,12 +104,12 @@ export class MySettingManager implements ISettingManager<Setting> {
 			}
 
 			this.isLoaded = true;
-			console.log("parsed loaded data successfully");
+			// console.log("parsed loaded data successfully");
 		}
 		await this.plugin.saveData(this.setting.value);
 	}
 }
 
 export const DEFAULT_SETTING: Setting = {
-	test: "test",
+	hiddenPlugins: "",
 };

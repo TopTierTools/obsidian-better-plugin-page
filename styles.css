@@ -1,8 +1,16 @@
-/*
+.better-plugins-page-plugin-setting-tab {
+	padding-top: 20px;
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+	.hidden-plugins-setting {
+		flex-direction: column;
+		align-items: stretch;
+	}
 
-If your plugin does not need CSS, delete this file.
-
-*/
+	.hidden-plugins-setting textarea {
+		margin-top: 10px;
+		min-width: 100%;
+		max-width: 100%;
+		width: 100%;
+		min-height: 200px;
+	}
+}
