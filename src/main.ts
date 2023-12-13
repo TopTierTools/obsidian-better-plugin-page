@@ -13,6 +13,13 @@ import $ from "jquery";
 import { observeIsPresent } from "@/observer";
 import debounce from "lodash/debounce";
 
+const getHiddenPlugins = (hiddenPluginsString: string) => {
+	if (hiddenPluginsString.trim() === "") {
+		return [];
+	}
+	return hiddenPluginsString.trim().split("\n");
+};
+
 export default class BetterPluginsPagePlugin extends Plugin {
 	settingManager: MySettingManager;
 	isPluginsPagePresentObserver: MutationObserver;
@@ -78,40 +85,124 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		browseButton.trigger("click");
 	}
 
-	// Create a debounced function to batch process filtering
+	// Updated debouncedFilterHiddenPlugins function
 	debouncedFilterHiddenPlugins = debounce(
 		() => {
 			// Get the hidden plugins from the setting and split by new line
-			const hiddenPlugins = this.settingManager
-				.getSettings()
-				.hiddenPlugins.trim()
-				.split("\n");
+			const hiddenPlugins = getHiddenPlugins(
+				this.settingManager.getSettings().hiddenPlugins
+			);
+
+			const communityItems = $(".community-item");
+
+			// update the div.community-modal-search-summary text content to show the number of plugins
+			const searchSummary = document.querySelector(
+				"div.community-modal-search-summary"
+			)!;
 
 			if (hiddenPlugins.length === 0) {
 				// If there are no hidden plugins, then show all community items
-				$(".community-item").show();
+				communityItems.show();
+				searchSummary.setText(`Found ${communityItems.length} plugins`);
 				return;
 			}
 
-			// Iterate through each hidden plugin name and show the matching items
-			hiddenPlugins.forEach((pluginName) => {
-				// Use a custom filter function for exact string matching
-				$(`.community-item`)
-					.filter(function () {
-						return (
-							$(this).find(".community-item-name").text() ===
-							pluginName
-						);
-					})
-					.hide();
+			// Check the state of the "Show hidden plugins" toggle
+			const showHiddenPlugins = localStorage.getItem(
+				"show-hidden-plugins"
+			);
+			const shouldShowHiddenPlugins = showHiddenPlugins === "true";
+
+			// Iterate through each community item and update its visibility
+			communityItems.each(function () {
+				// ! the this keyword refers to the current community item
+				const itemName = $(this).find(".community-item-name").text();
+				const isHidden = hiddenPlugins.includes(itemName);
+
+				if (!isHidden) {
+					// If the item is not hidden, show it and continue to the next item
+					$(this)
+						.removeClass(
+							"better-plugins-page-hidden-community-item"
+						)
+						.show();
+					return;
+				}
+
+				// Toggle the better-plugins-page-hidden-community-item class based on the "Show hidden plugins" toggle
+				$(this).toggleClass(
+					"better-plugins-page-hidden-community-item",
+					shouldShowHiddenPlugins
+				);
+				// Show or hide the item based on the "Show hidden plugins" toggle
+				shouldShowHiddenPlugins ? $(this).show() : $(this).hide();
 			});
+
+			const numberOfPlugins = communityItems.length;
+			// get all the community item element with display: none style or .better-plugins-page-hidden-community-item
+			const numberOfHiddenPlugins = hiddenPlugins.length;
+			// set text
+			searchSummary.setText(
+				`Found ${numberOfPlugins} plugins, Showing ${
+					numberOfPlugins - numberOfHiddenPlugins
+				}, Hidden ${numberOfHiddenPlugins}`
+			);
+
+			// Add "Hide" button to all community item cards
+			this.addHideButtons(communityItems);
 		},
 		500,
-		{
-			leading: true,
-			trailing: true,
-		}
+		{ leading: true, trailing: true }
 	);
+
+	// Function to create and add the "Hide" button to a community item card
+	addHideButton(card: HTMLElement) {
+		const that = this;
+		// Check if the "Hide" button already exists in the card
+		if (!card.querySelector(".hide-button")) {
+			const hideButton = document.createElement("button");
+			hideButton.addClasses(["hide-button", "clickable-icon"]);
+
+			// Your SVG icon goes here
+			setIcon(hideButton, "eye-off");
+
+			hideButton.addEventListener("click", function (event) {
+				event.stopImmediatePropagation();
+				event.stopPropagation();
+				// Add your "Hide" button click event handling logic here
+				const itemName = $(card).find(".community-item-name").text();
+				that.addHiddenPlugin(itemName);
+			});
+
+			card.appendChild(hideButton);
+		}
+	}
+
+	// Function to add the "Hide" button to all community item cards
+	addHideButtons(cards: JQuery<HTMLElement>) {
+		const that = this;
+		cards.each(function (index, element) {
+			that.addHideButton(element);
+		});
+	}
+
+	// Function to add a community item to the hidden plugins list
+	addHiddenPlugin(pluginName: string) {
+		const currentHiddenPlugins = getHiddenPlugins(
+			this.settingManager.getSettings().hiddenPlugins
+		);
+
+		// Check if the pluginName is not already in the hidden plugins list
+		if (!currentHiddenPlugins.includes(pluginName)) {
+			currentHiddenPlugins.push(pluginName);
+			const newHiddenPlugins = currentHiddenPlugins.join("\n");
+
+			// Update the hidden plugins setting
+			this.settingManager.updateSettings((setting) => {
+				setting.value.hiddenPlugins = newHiddenPlugins;
+			});
+		}
+	}
 
 	onPluginsPageShow() {
 		// Select ".community-modal-controls .setting-item-control" and add a button.clickable-icon item to it
@@ -139,12 +230,6 @@ export default class BetterPluginsPagePlugin extends Plugin {
 			settingItemControl.append(button);
 		}
 
-		// observe div.community-modal-search-results in the community modal
-		// if there is changes, then we need to filter the results
-		// get the hidden plugins from the setting, each line from the value is a plugin name
-		// then use jquery to get all the div.community-item:contains(plugin name) and hide them
-		// hidden them by giving them a display: none style
-
 		// Observe div.community-modal-search-results in the community modal
 		const communityModalSearchResults = document.querySelector(
 			"div.community-modal-search-results"
@@ -156,74 +241,14 @@ export default class BetterPluginsPagePlugin extends Plugin {
 			subtree: true, // Observe changes in all descendants
 		});
 
-		// also if the hidden plugins setting changes, it need to do the filtering again
-		// if the some plugins name is removed from the hidden plugins setting, then it need to show them again
-		// if the some plugins name is added to the hidden plugins setting, then it need to hide them
-		// you can use this.settingManager.setting.onChange to observe the changes
-		// this.settingManager.setting.onChange((change) => {
-		// 	console.log("the plugin name changes", change.newValue);
-		// });
-
 		this.settingManager.setting.onChange((change) => {
 			if (change.currentPath === "hiddenPlugins") {
 				// Handle changes to the hiddenPlugins setting here
 				// You can use change.newValue and change.oldValue to compare and update the filtering
-				this.updateFiltering(
-					change.previousValue as string,
-					change.newValue as string
-				);
+				this.debouncedFilterHiddenPlugins();
 			}
 		});
 	}
-
-	updateFiltering = debounce(
-		(oldHiddenPlugins: string, newHiddenPlugins: string) => {
-			// Split the old and new hidden plugin names by newline
-			const oldHiddenPluginNames = oldHiddenPlugins.trim().split("\n");
-			const newHiddenPluginNames = newHiddenPlugins.trim().split("\n");
-
-			if (newHiddenPluginNames.length === 0) {
-				// If there are no hidden plugins, then show all community items
-				$(".community-item").show();
-				return;
-			}
-
-			// Find added and removed plugin names
-			const addedPluginNames = newHiddenPluginNames.filter(
-				(name) => !oldHiddenPluginNames.includes(name)
-			);
-			const removedPluginNames = oldHiddenPluginNames.filter(
-				(name) => !newHiddenPluginNames.includes(name)
-			);
-
-			// Update the filtering based on added and removed plugins
-			addedPluginNames.forEach((pluginName) => {
-				// Use a custom filter function for exact string matching
-				$(`.community-item`)
-					.filter(function () {
-						return (
-							$(this).find(".community-item-name").text() ===
-							pluginName
-						);
-					})
-					.hide();
-			});
-
-			removedPluginNames.forEach((pluginName) => {
-				// Use a custom filter function for exact string matching
-				$(`.community-item`)
-					.filter(function () {
-						return (
-							$(this).find(".community-item-name").text() ===
-							pluginName
-						);
-					})
-					.show();
-			});
-		},
-		500,
-		{ leading: true, trailing: true }
-	); // Debounce the updateFiltering function
 
 	onunload() {
 		super.onunload();
@@ -293,6 +318,9 @@ class FilterModal extends Modal {
 								"show-hidden-plugins",
 								value.toString()
 							);
+
+							// Trigger filtering when the toggle changes
+							this.plugin.debouncedFilterHiddenPlugins();
 						});
 				}
 			);

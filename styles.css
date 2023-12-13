@@ -14,3 +14,24 @@
 		min-height: 200px;
 	}
 }
+
+/* Hide community items with the specified class */
+.better-plugins-page-hidden-community-item {
+	opacity: 0.4;
+}
+
+/* Hide the button by default */
+.community-item .hide-button {
+	display: none !important;
+}
+
+/* Show the button when hovering over the card */
+.community-item:hover .hide-button {
+	display: inline-block !important;
+	/* You can style the button as needed */
+	/* For example, you can set its position to the top right corner */
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	cursor: pointer;
+}
