@@ -2,6 +2,13 @@
 
 The "Better Plugins Page" plugin enhances the user experience when managing plugins in Obsidian by providing additional features and options for organizing and filtering community plugins. This plugin is designed to help users easily discover, hide, and filter plugins based on their preferences.
 
+## Design Philosophy
+
+
+
+![Simple, Robust, Powerful = Complete](https://github.com/TopTierTools/obsidian-better-plugin-page/assets/43137033/83126663-8932-42a7-bfb4-47b109da1c29)
+
+
 ## Key Features
 
 1. **Filter and Sort:** Seamlessly filter and sort community plugins based on criteria such as download count and last update date, allowing you to find plugins that match your preferences more efficiently.
