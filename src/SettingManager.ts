@@ -16,10 +16,7 @@ const corruptedMessage =
  */
 export class MySettingManager implements ISettingManager<Setting> {
 	private plugin: Plugin;
-	/**
-	 * @remarks this setting is exposed but directly accessing this value could be dangerous.
-	 */
-	setting: State<Setting> = new State(DEFAULT_SETTING);
+	private setting: State<Setting> = new State(DEFAULT_SETTING);
 	private asyncQueue = new AsyncQueue();
 
 	/**

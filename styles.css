@@ -21,17 +21,30 @@
 }
 
 /* Hide the button by default */
-.community-item .hide-button {
+.community-item button {
 	display: none !important;
 }
 
 /* Show the button when hovering over the card */
-.community-item:hover .hide-button {
-	display: inline-block !important;
+.community-item:hover button {
 	/* You can style the button as needed */
 	/* For example, you can set its position to the top right corner */
 	position: absolute;
 	top: 10px;
 	right: 10px;
 	cursor: pointer;
+}
+
+.community-item.better-plugins-page-hidden-community-item:hover
+	button.show-button {
+	display: block !important;
+}
+
+.community-item:hover:not(.better-plugins-page-hidden-community-item)
+	button.hide-button {
+	display: block !important;
+}
+
+.better-plugin-page-download-count-filtered {
+	display: none;
 }

@@ -1,28 +1,33 @@
-import {
-	App,
-	Modal,
-	Plugin,
-	PluginSettingTab,
-	Setting,
-	setIcon,
-} from "obsidian";
+import { Plugin, setIcon, setTooltip } from "obsidian";
 import "@total-typescript/ts-reset";
 import "@total-typescript/ts-reset/dom";
 import { MySettingManager } from "@/SettingManager";
 import $ from "jquery";
 import { observeIsPresent } from "@/observer";
 import debounce from "lodash/debounce";
-
-const getHiddenPlugins = (hiddenPluginsString: string) => {
-	if (hiddenPluginsString.trim() === "") {
-		return [];
-	}
-	return hiddenPluginsString.trim().split("\n");
-};
+import * as chrono from "chrono-node";
+// import { BetterPluginsPagePluginSettingTab } from "./BetterPluginsPagePluginSettingTab";
+import { FilterModal } from "./FilterModal";
+import { getHiddenPlugins } from "./getHiddenPlugins";
+import { getName } from "./getName";
+import { getUpdatedWithinMilliseconds } from "./getUpdatedWithinMilliseconds";
 
 export default class BetterPluginsPagePlugin extends Plugin {
 	settingManager: MySettingManager;
 	isPluginsPagePresentObserver: MutationObserver;
+	lock = false;
+	hiddenPlugins: string[] = [];
+
+	// we need this observer to observe the search results changes
+	communityItemsObserver = new MutationObserver((mutationsList) => {
+		// Check if there are changes in the search results
+		for (const mutation of mutationsList) {
+			if (mutation.type === "childList") {
+				this.debouncedFilterHiddenPlugins();
+				// console.log("communityItemsObserver", mutationsList);
+			}
+		}
+	});
 
 	async onload() {
 		// initialize the setting manager
@@ -39,18 +44,16 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(
-			new BetterPluginsPagePluginSettingTab(this.app, this)
-		);
+		// this.addSettingTab(
+		// 	new BetterPluginsPagePluginSettingTab(this.app, this)
+		// );
 
 		this.isPluginsPagePresentObserver = observeIsPresent(
 			"div.mod-community-modal",
 			(isPresent) => {
 				if (isPresent) {
-					// console.log("community-item is present");
 					this.onPluginsPageShow();
 				} else {
-					// console.log("community-item is not present");
 					this.onPluginsPageClose();
 				}
 			}
@@ -61,15 +64,6 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		// Disconnect the observer
 		this.communityItemsObserver.disconnect();
 	};
-
-	communityItemsObserver = new MutationObserver((mutationsList) => {
-		// Check if there are changes in the search results
-		for (const mutation of mutationsList) {
-			if (mutation.type === "childList") {
-				this.debouncedFilterHiddenPlugins();
-			}
-		}
-	});
 
 	openPluginsPage() {
 		// new SampleModal(this.app).open();
@@ -85,168 +79,236 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		browseButton.trigger("click");
 	}
 
-	// Updated debouncedFilterHiddenPlugins function
 	debouncedFilterHiddenPlugins = debounce(
 		() => {
-			// Get the hidden plugins from the setting and split by new line
-			const hiddenPlugins = getHiddenPlugins(
-				this.settingManager.getSettings().hiddenPlugins
-			);
+			const that = this;
+			try {
+				if (this.lock) {
+					return; // ignore the event
+				}
+				this.lock = true;
+				const downloadCountCompare =
+					localStorage.getItem("download-count-compare") ?? "";
+				const downloadCount =
+					localStorage.getItem("download-count") ?? "";
 
-			const communityItems = $(".community-item");
+				const updatedWithinCompare =
+					localStorage.getItem("updated-within-compare") ?? "";
+				const updatedWithin =
+					localStorage.getItem("updated-within") ?? "";
 
-			// update the div.community-modal-search-summary text content to show the number of plugins
-			const searchSummary = document.querySelector(
-				"div.community-modal-search-summary"
-			)!;
+				const downloadCountValue = parseInt(downloadCount, 10);
 
-			if (hiddenPlugins.length === 0) {
-				// If there are no hidden plugins, then show all community items
-				communityItems.show();
-				searchSummary.setText(`Found ${communityItems.length} plugins`);
-				return;
-			}
+				const communityItems = $(".community-item");
 
-			// Check the state of the "Show hidden plugins" toggle
-			const showHiddenPlugins = localStorage.getItem(
-				"show-hidden-plugins"
-			);
-			const shouldShowHiddenPlugins = showHiddenPlugins === "true";
-
-			// Iterate through each community item and update its visibility
-			communityItems.each(function () {
-				// ! the this keyword refers to the current community item
-				const itemName = $(this).find(".community-item-name").text();
-				const isHidden = hiddenPlugins.includes(itemName);
-
-				if (!isHidden) {
-					// If the item is not hidden, show it and continue to the next item
-					$(this)
+				if (this.hiddenPlugins.length === 0) {
+					communityItems
 						.removeClass(
 							"better-plugins-page-hidden-community-item"
 						)
 						.show();
+					this.addHideButtons(communityItems);
 					return;
 				}
 
-				// Toggle the better-plugins-page-hidden-community-item class based on the "Show hidden plugins" toggle
-				$(this).toggleClass(
-					"better-plugins-page-hidden-community-item",
-					shouldShowHiddenPlugins
+				const showHiddenPlugins = localStorage.getItem(
+					"show-hidden-plugins"
 				);
-				// Show or hide the item based on the "Show hidden plugins" toggle
-				shouldShowHiddenPlugins ? $(this).show() : $(this).hide();
-			});
+				const shouldShowHiddenPlugins = showHiddenPlugins === "true";
 
-			const numberOfPlugins = communityItems.length;
-			// get all the community item element with display: none style or .better-plugins-page-hidden-community-item
-			const numberOfHiddenPlugins = hiddenPlugins.length;
-			// set text
-			searchSummary.setText(
-				`Found ${numberOfPlugins} plugins, Showing ${
-					numberOfPlugins - numberOfHiddenPlugins
-				}, Hidden ${numberOfHiddenPlugins}`
-			);
+				communityItems.each(function () {
+					if (downloadCountValue) {
+						const downloadsText = $(this)
+							.find(".community-item-downloads-text")
+							.text()
+							.replace(/,/g, "");
+						const itemDownloads = parseInt(downloadsText, 10);
 
-			// Add "Hide" button to all community item cards
-			this.addHideButtons(communityItems);
+						if (
+							(downloadCountCompare === "greater" &&
+								itemDownloads <= downloadCountValue) ||
+							(downloadCountCompare === "less" &&
+								itemDownloads >= downloadCountValue)
+						) {
+							$(this).hide();
+							return;
+						} else {
+							$(this).show();
+						}
+					}
+
+					if (updatedWithin) {
+						const updatedWithinMilliseconds =
+							getUpdatedWithinMilliseconds(updatedWithin);
+
+						const updatedText = $(this)
+							.find(".community-item-updated")
+							.text()
+							.replace("Updated ", "");
+						const updatedDate = chrono.parseDate(updatedText);
+
+						if (updatedDate) {
+							const currentDate = new Date();
+							const timeDifference =
+								currentDate.getTime() - updatedDate.getTime();
+
+							if (
+								(updatedWithinCompare === "within" &&
+									timeDifference <=
+										updatedWithinMilliseconds) ||
+								(updatedWithinCompare === "before" &&
+									timeDifference > updatedWithinMilliseconds)
+							) {
+								$(this).show();
+							} else {
+								$(this).hide();
+								return;
+							}
+						}
+					}
+
+					const itemName = getName(this);
+					const isHidden = that.hiddenPlugins.includes(itemName);
+
+					if (!isHidden) {
+						$(this)
+							.removeClass(
+								"better-plugins-page-hidden-community-item"
+							)
+							.show();
+						return;
+					}
+
+					$(this).toggleClass(
+						"better-plugins-page-hidden-community-item",
+						shouldShowHiddenPlugins
+					);
+					shouldShowHiddenPlugins ? $(this).show() : $(this).hide();
+				});
+
+				this.addHideButtons(communityItems);
+			} catch (e) {
+				// Handle the error
+			} finally {
+				this.lock = false;
+			}
 		},
 		500,
 		{ leading: true, trailing: true }
 	);
 
-	// Function to create and add the "Hide" button to a community item card
-	addHideButton(card: HTMLElement) {
-		const that = this;
-		// Check if the "Hide" button already exists in the card
-		if (!card.querySelector(".hide-button")) {
-			const hideButton = document.createElement("button");
-			hideButton.addClasses(["hide-button", "clickable-icon"]);
-
-			// Your SVG icon goes here
-			setIcon(hideButton, "eye-off");
-
-			hideButton.addEventListener("click", function (event) {
-				event.stopImmediatePropagation();
-				event.stopPropagation();
-				// Add your "Hide" button click event handling logic here
-				const itemName = $(card).find(".community-item-name").text();
-				that.addHiddenPlugin(itemName);
-			});
-
-			card.appendChild(hideButton);
-		}
-	}
-
-	// Function to add the "Hide" button to all community item cards
+	// Function to add the "Hide" and "Show" buttons to all community item cards
 	addHideButtons(cards: JQuery<HTMLElement>) {
-		const that = this;
-		cards.each(function (index, element) {
-			that.addHideButton(element);
+		cards.each((index, element) => {
+			const isInstalledPlugin =
+				$(element).find(
+					".community-item-name .flair.mod-pop:contains('Installed')"
+				).length > 0;
+
+			if (!isInstalledPlugin) {
+				const card = element;
+				// Check if the "Hide" button already exists in the card
+				let hideButton = card.querySelector(
+					".hide-button"
+				) as HTMLButtonElement;
+
+				if (!hideButton) {
+					// Create the "Hide" button
+					hideButton = document.createElement("button");
+					hideButton.classList.add("hide-button", "clickable-icon");
+					setIcon(hideButton, "eye-off");
+					setTooltip(hideButton, "Hide");
+
+					// Create the "Show" button
+					const showButton = document.createElement("button");
+					showButton.classList.add("show-button", "clickable-icon");
+					setIcon(showButton, "eye");
+					setTooltip(showButton, "Show");
+
+					// Add click event listeners to both buttons
+					hideButton.addEventListener("click", (event) => {
+						event.stopImmediatePropagation();
+						event.stopPropagation();
+						// Get the item name of the community item that this button belongs to
+						const itemName = getName(card);
+						this.toggleHiddenPlugin(itemName, true);
+					});
+
+					showButton.addEventListener("click", (event) => {
+						event.stopImmediatePropagation();
+						event.stopPropagation();
+						const itemName = getName(card);
+						this.toggleHiddenPlugin(itemName, false);
+					});
+
+					// Append both buttons to the card
+					card.appendChild(hideButton);
+					card.appendChild(showButton);
+				}
+			}
 		});
 	}
 
-	// Function to add a community item to the hidden plugins list
-	addHiddenPlugin(pluginName: string) {
+	/**
+	 * Function to toggle a community item to the hidden plugins list.
+	 * If the plugin is already in the hidden plugins list, then it will be removed from the list.
+	 * If the plugin is not in the hidden plugins list, it will be added to the list.
+	 * @param {string} pluginName - The name of the plugin to toggle.
+	 */
+	// Function to toggle a community item to the hidden plugins list
+	toggleHiddenPlugin(pluginName: string, hide: boolean) {
 		const currentHiddenPlugins = getHiddenPlugins(
 			this.settingManager.getSettings().hiddenPlugins
 		);
+		// if hide is true, then we hide the plugin
+		// else we removed the plugin from the hidden plugins list
 
-		// Check if the pluginName is not already in the hidden plugins list
-		if (!currentHiddenPlugins.includes(pluginName)) {
-			currentHiddenPlugins.push(pluginName);
-			const newHiddenPlugins = currentHiddenPlugins.join("\n");
-
-			// Update the hidden plugins setting
-			this.settingManager.updateSettings((setting) => {
-				setting.value.hiddenPlugins = newHiddenPlugins;
-			});
+		if (hide) {
+			if (!currentHiddenPlugins.includes(pluginName)) {
+				currentHiddenPlugins.push(pluginName);
+			}
+		} else {
+			const index = currentHiddenPlugins.indexOf(pluginName);
+			if (index !== -1) {
+				currentHiddenPlugins.splice(index, 1);
+			}
 		}
+
+		const newHiddenPlugins = currentHiddenPlugins.join("\n");
+
+		// Update the hidden plugins setting
+		this.settingManager.updateSettings((setting) => {
+			setting.value.hiddenPlugins = newHiddenPlugins;
+			this.hiddenPlugins = currentHiddenPlugins;
+			// console.log("hiddenPlugins", this.hiddenPlugins);
+			this.debouncedFilterHiddenPlugins();
+		});
 	}
 
 	onPluginsPageShow() {
-		// Select ".community-modal-controls .setting-item-control" and add a button.clickable-icon item to it
 		const settingItemControl = $(
 			".community-modal-controls .setting-item:not('.mod-toggle') .setting-item-control"
 		);
-		// Check if the button already exists within the settingItemControl
+
 		if (
 			!settingItemControl.find(".better-plugins-page-filter-btn").length
 		) {
-			// Create a button element and add the clickable icon class to it
 			const button = $("<button></button>")
 				.addClass("clickable-icon")
-				.addClass("better-plugins-page-filter-btn");
+				.addClass("better-plugins-page-filter-btn")
+				.on("click", () => new FilterModal(this).open());
 
-			button.on("click", () => {
-				// show the modal
-				new FilterModal(this).open();
-			});
-
-			// Set the icon of the button
-			setIcon(button.get(0) as HTMLButtonElement, "filter");
-
-			// Add the button to the settingItemControl
+			setIcon(button[0] as HTMLButtonElement, "filter");
+			setTooltip(button[0] as HTMLButtonElement, "Filter");
 			settingItemControl.append(button);
 		}
 
-		// Observe div.community-modal-search-results in the community modal
 		const communityModalSearchResults = document.querySelector(
 			"div.community-modal-search-results"
 		)!;
-
-		// Configure and start observing the search results
 		this.communityItemsObserver.observe(communityModalSearchResults, {
-			childList: true, // Observe changes in the child nodes
-			subtree: true, // Observe changes in all descendants
-		});
-
-		this.settingManager.setting.onChange((change) => {
-			if (change.currentPath === "hiddenPlugins") {
-				// Handle changes to the hiddenPlugins setting here
-				// You can use change.newValue and change.oldValue to compare and update the filtering
-				this.debouncedFilterHiddenPlugins();
-			}
+			childList: true,
+			subtree: true,
 		});
 	}
 
@@ -254,103 +316,5 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		super.onunload();
 		this.isPluginsPagePresentObserver.disconnect();
 		this.communityItemsObserver.disconnect(); // Disconnect the communityItemsObserver
-	}
-}
-
-class CommonSetting {
-	plugin: BetterPluginsPagePlugin;
-
-	constructor(plugin: BetterPluginsPagePlugin) {
-		this.plugin = plugin;
-	}
-
-	createHiddenPluginsSetting(container: HTMLElement) {
-		const hiddenPluginsSetting = new Setting(container)
-			.setName("Hidden Plugins")
-			.setDesc("One line per plugin name")
-			.addTextArea((text) =>
-				text
-					.setValue(
-						this.plugin.settingManager.getSettings().hiddenPlugins
-					)
-					.onChange(async (value) => {
-						this.plugin.settingManager.updateSettings((setting) => {
-							setting.value.hiddenPlugins = value;
-						});
-					})
-			);
-
-		hiddenPluginsSetting.settingEl.addClasses(["hidden-plugins-setting"]);
-	}
-}
-
-class FilterModal extends Modal {
-	plugin: BetterPluginsPagePlugin;
-
-	constructor(plugin: BetterPluginsPagePlugin) {
-		super(plugin.app);
-		this.plugin = plugin;
-	}
-
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.empty();
-		contentEl.addClasses(["better-plugins-page-plugin-setting-tab"]);
-
-		// add a toggle to the modal
-		const toggle = new Setting(contentEl)
-			.setName("Show hidden plugins")
-			.addToggle((toggle) =>
-				// get the value from local storage
-				{
-					const showHiddenPlugins = localStorage.getItem(
-						"show-hidden-plugins"
-					);
-
-					// parse the value to boolean, by default is false
-					const showHiddenPluginsBool =
-						showHiddenPlugins === "true" ? true : false;
-					return toggle
-						.setValue(showHiddenPluginsBool)
-						.onChange(async (value) => {
-							// store the value in local storage
-							localStorage.setItem(
-								"show-hidden-plugins",
-								value.toString()
-							);
-
-							// Trigger filtering when the toggle changes
-							this.plugin.debouncedFilterHiddenPlugins();
-						});
-				}
-			);
-		toggle.settingEl.addClasses(["show-hidden-plugins-toggle"]);
-
-		const commonSetting = new CommonSetting(this.plugin);
-		commonSetting.createHiddenPluginsSetting(contentEl);
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
-}
-
-class BetterPluginsPagePluginSettingTab extends PluginSettingTab {
-	plugin: BetterPluginsPagePlugin;
-
-	constructor(app: App, plugin: BetterPluginsPagePlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const { containerEl } = this;
-
-		containerEl.empty();
-		containerEl.addClasses(["better-plugins-page-plugin-setting-tab"]);
-
-		const commonSetting = new CommonSetting(this.plugin);
-		commonSetting.createHiddenPluginsSetting(containerEl);
 	}
 }
