@@ -1,12 +1,22 @@
 ## Better Plugins Page for Obsidian
 
+![CleanShot 2023-12-14 at 10 56 59@2x](https://github.com/TopTierTools/obsidian-better-plugin-page/assets/43137033/53fadbfa-440b-4f66-8e4c-c2ba14353d36)
+
+
 The "Better Plugins Page" plugin enhances the user experience when managing plugins in Obsidian by providing additional features and options for organizing and filtering community plugins. This plugin is designed to help users easily discover, hide, and filter plugins based on their preferences.
+
+
+See the demo: https://www.youtube.com/watch?v=yzxMBsgt0Jo&ab_channel=YomaruHananoshika
+
+<a href="https://www.buymeacoffee.com/yomaru" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 105px !important;" ></a> [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/hananoshikayomaru)
 
 ## Design Philosophy
 
-
+![Thumbnails 001](https://github.com/TopTierTools/obsidian-better-plugin-page/assets/43137033/725fe1a8-8d15-42ed-995d-86d36ee50a5c)
 
 ![Simple, Robust, Powerful = Complete](https://github.com/TopTierTools/obsidian-better-plugin-page/assets/43137033/83126663-8932-42a7-bfb4-47b109da1c29)
+
+We only build good softwares. And we follow the 3 big principles (simple, robust, powerful). To learn more, visit the company manifest written by our founder: https://yomaru.dev/toptiertools
 
 
 ## Key Features
@@ -18,3 +28,28 @@ The "Better Plugins Page" plugin enhances the user experience when managing plug
 5. **User-Friendly Interface:** The plugin integrates seamlessly with the Obsidian user interface, providing clear buttons and icons for hiding, showing, and filtering plugins. It enhances the default Obsidian plugin management experience.
 6. **Filter by Updated Time**: you can easily filter community plugins based on their last update date.
 7. **Filter by User Download Count**: Gain insights into the popularity of community plugins by filtering them based on their download count. This feature enables you to discover plugins that are widely used and trusted by the Obsidian community.
+
+## Installation
+
+### Through community plugin store
+
+You can install this on community plugin store 😎
+
+### Through BRAT
+
+1. install the BRAT plugin
+2. go to the plugin option, add beta plugin, copy and paste the link of this repo.
+3. the plugin will automatically appear in the list of installed community plugins, enabled this plugin
+
+### Manual installation
+
+1. cd to `.obsidian/plugins`
+2. git clone this repo
+3. `cd obsidian-3d-graph && bun install && bun run build`
+4. there you go 🎉
+
+## Say thank you
+
+If you are enjoying this plugin then please support my work and enthusiasm by sponsoring me on Github or buying me a coffee on https://www.buymeacoffee.com/yomaru.
+
+<a href="https://www.buymeacoffee.com/yomaru" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 30px !important;width: 105px !important;" ></a> [![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/hananoshikayomaru)
