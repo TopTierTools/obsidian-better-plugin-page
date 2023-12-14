@@ -2,6 +2,26 @@ import { ButtonComponent, Modal, Setting } from "obsidian";
 import { CommonSetting } from "./CommonSetting";
 import BetterPluginsPagePlugin from "./main";
 
+export enum UpdatedFilterOption {
+	Within = "with in",
+	Before = "before",
+}
+
+export enum UpdatedTimeRangeOption {
+	none = "",
+	OneWeek = "1 week",
+	TwoWeek = "2 weeks",
+	OneMonth = "1 month",
+	ThreeMonth = "3 months",
+	SixMonth = "6 months",
+	OneYear = "1 year",
+}
+
+export enum DownloadCountCompareOption {
+	less = "less",
+	greater = "greater",
+}
+
 export class FilterModal extends Modal {
 	plugin: BetterPluginsPagePlugin;
 
@@ -23,9 +43,17 @@ export class FilterModal extends Modal {
 				);
 
 				return dropdown
-					.addOption("within", "with in")
-					.addOption("before", "before")
-					.setValue(updatedWithinCompare ?? "within")
+					.addOption(
+						UpdatedFilterOption.Before,
+						UpdatedFilterOption.Before
+					)
+					.addOption(
+						UpdatedFilterOption.Within,
+						UpdatedFilterOption.Within
+					)
+					.setValue(
+						updatedWithinCompare ?? UpdatedFilterOption.Within
+					)
 					.onChange(async (value) => {
 						// set this in local storage
 						localStorage.setItem(
@@ -39,14 +67,35 @@ export class FilterModal extends Modal {
 			.addDropdown((dropdown) => {
 				const updatedWithin = localStorage.getItem("updated-within");
 				return dropdown
-					.addOption("", "")
-					.addOption("1-week", "1 week")
-					.addOption("2-week", "2 weeks")
-					.addOption("1-month", "1 month")
-					.addOption("3-month", "3 months")
-					.addOption("6-month", "6 months")
-					.addOption("1-year", "1 year")
-					.setValue(updatedWithin ?? "")
+					.addOption(
+						UpdatedTimeRangeOption.none,
+						UpdatedTimeRangeOption.none
+					)
+					.addOption(
+						UpdatedTimeRangeOption.OneWeek,
+						UpdatedTimeRangeOption.OneWeek
+					)
+					.addOption(
+						UpdatedTimeRangeOption.TwoWeek,
+						UpdatedTimeRangeOption.TwoWeek
+					)
+					.addOption(
+						UpdatedTimeRangeOption.OneMonth,
+						UpdatedTimeRangeOption.OneMonth
+					)
+					.addOption(
+						UpdatedTimeRangeOption.ThreeMonth,
+						UpdatedTimeRangeOption.ThreeMonth
+					)
+					.addOption(
+						UpdatedTimeRangeOption.SixMonth,
+						UpdatedTimeRangeOption.SixMonth
+					)
+					.addOption(
+						UpdatedTimeRangeOption.OneYear,
+						UpdatedTimeRangeOption.OneYear
+					)
+					.setValue(updatedWithin ?? UpdatedTimeRangeOption.none)
 					.onChange(async (value) => {
 						// set this in local storage
 						localStorage.setItem(
@@ -66,9 +115,19 @@ export class FilterModal extends Modal {
 				);
 
 				return dropdown
-					.addOption("greater", "greater than")
-					.addOption("less", "less than")
-					.setValue(downloadCountCompare ?? "greater")
+					.addOption(
+						DownloadCountCompareOption.less,
+						DownloadCountCompareOption.less
+					)
+					.addOption(
+						DownloadCountCompareOption.greater,
+						DownloadCountCompareOption.greater
+					)
+
+					.setValue(
+						downloadCountCompare ??
+							DownloadCountCompareOption.greater
+					)
 					.onChange(async (value) => {
 						// set in local storage
 						localStorage.setItem(

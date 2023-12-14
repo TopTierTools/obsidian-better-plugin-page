@@ -7,7 +7,12 @@ import { observeIsPresent } from "@/observer";
 import debounce from "lodash/debounce";
 import * as chrono from "chrono-node";
 // import { BetterPluginsPagePluginSettingTab } from "./BetterPluginsPagePluginSettingTab";
-import { FilterModal } from "./FilterModal";
+import {
+	DownloadCountCompareOption,
+	FilterModal,
+	UpdatedFilterOption,
+	UpdatedTimeRangeOption,
+} from "./FilterModal";
 import { getHiddenPlugins } from "./getHiddenPlugins";
 import { getName } from "./getName";
 import { getUpdatedWithinMilliseconds } from "./getUpdatedWithinMilliseconds";
@@ -22,6 +27,7 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		// Check if there are changes in the search results
 		for (const mutation of mutationsList) {
 			if (mutation.type === "childList") {
+				if (this.lock) return;
 				this.debouncedFilterHiddenPlugins();
 				// console.log("communityItemsObserver", mutationsList);
 			}
@@ -81,32 +87,36 @@ export default class BetterPluginsPagePlugin extends Plugin {
 	debouncedFilterHiddenPlugins = debounce(
 		() => {
 			const that = this;
+			const communityItems = $(".community-item");
 			try {
 				this.lock = true;
+				// console.log("debouncedFilterHiddenPlugins");
 				const downloadCountCompare =
-					localStorage.getItem("download-count-compare") ?? "";
+					localStorage.getItem("download-count-compare") ??
+					DownloadCountCompareOption.greater;
 				const downloadCount =
 					localStorage.getItem("download-count") ?? "";
 
 				const updatedWithinCompare =
-					localStorage.getItem("updated-within-compare") ?? "";
+					localStorage.getItem("updated-within-compare") ??
+					UpdatedFilterOption.Within;
 				const updatedWithin =
-					localStorage.getItem("updated-within") ?? "";
+					localStorage.getItem("updated-within") ??
+					UpdatedTimeRangeOption.none;
 
 				const downloadCountValue = parseInt(downloadCount, 10);
 
-				const communityItems = $(".community-item");
-
 				if (
 					this.settingManager.getSettings().hiddenPluginsArray
-						.length === 0
+						.length === 0 &&
+					!downloadCount &&
+					!updatedWithin
 				) {
 					communityItems
 						.removeClass(
 							"better-plugins-page-hidden-community-item"
 						)
 						.show();
-					this.addHideButtons(communityItems);
 					return;
 				}
 
@@ -136,7 +146,7 @@ export default class BetterPluginsPagePlugin extends Plugin {
 						}
 					}
 
-					if (updatedWithin) {
+					if (updatedWithin !== UpdatedTimeRangeOption.none) {
 						const updatedWithinMilliseconds =
 							getUpdatedWithinMilliseconds(updatedWithin);
 
@@ -152,10 +162,12 @@ export default class BetterPluginsPagePlugin extends Plugin {
 								currentDate.getTime() - updatedDate.getTime();
 
 							if (
-								(updatedWithinCompare === "within" &&
+								(updatedWithinCompare ===
+									UpdatedFilterOption.Within &&
 									timeDifference <=
 										updatedWithinMilliseconds) ||
-								(updatedWithinCompare === "before" &&
+								(updatedWithinCompare ===
+									UpdatedFilterOption.Before &&
 									timeDifference > updatedWithinMilliseconds)
 							) {
 								$(this).show();
@@ -186,8 +198,6 @@ export default class BetterPluginsPagePlugin extends Plugin {
 					);
 					shouldShowHiddenPlugins ? $(this).show() : $(this).hide();
 				});
-
-				this.addHideButtons(communityItems);
 			} catch (e) {
 				// Handle the error
 			} finally {
@@ -195,6 +205,7 @@ export default class BetterPluginsPagePlugin extends Plugin {
 				const summaryText = document.querySelector(
 					".community-modal-search-summary"
 				);
+				this.addHideButtons(communityItems);
 				// get the number of visible plugins
 				const visiblePlugins = $(".community-item:visible").length;
 				summaryText?.setText(`Showing ${visiblePlugins} plugins:`);
