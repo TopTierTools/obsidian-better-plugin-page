@@ -16,7 +16,6 @@ export default class BetterPluginsPagePlugin extends Plugin {
 	settingManager: MySettingManager;
 	isPluginsPagePresentObserver: MutationObserver;
 	lock = false;
-	hiddenPlugins: string[] = [];
 
 	// we need this observer to observe the search results changes
 	communityItemsObserver = new MutationObserver((mutationsList) => {
@@ -83,9 +82,6 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		() => {
 			const that = this;
 			try {
-				if (this.lock) {
-					return; // ignore the event
-				}
 				this.lock = true;
 				const downloadCountCompare =
 					localStorage.getItem("download-count-compare") ?? "";
@@ -101,7 +97,10 @@ export default class BetterPluginsPagePlugin extends Plugin {
 
 				const communityItems = $(".community-item");
 
-				if (this.hiddenPlugins.length === 0) {
+				if (
+					this.settingManager.getSettings().hiddenPluginsArray
+						.length === 0
+				) {
 					communityItems
 						.removeClass(
 							"better-plugins-page-hidden-community-item"
@@ -168,7 +167,9 @@ export default class BetterPluginsPagePlugin extends Plugin {
 					}
 
 					const itemName = getName(this);
-					const isHidden = that.hiddenPlugins.includes(itemName);
+					const isHidden = that.settingManager
+						.getSettings()
+						.hiddenPluginsArray.includes(itemName);
 
 					if (!isHidden) {
 						$(this)
@@ -191,6 +192,12 @@ export default class BetterPluginsPagePlugin extends Plugin {
 				// Handle the error
 			} finally {
 				this.lock = false;
+				const summaryText = document.querySelector(
+					".community-modal-search-summary"
+				);
+				// get the number of visible plugins
+				const visiblePlugins = $(".community-item:visible").length;
+				summaryText?.setText(`Showing ${visiblePlugins} plugins:`);
 			}
 		},
 		500,
@@ -200,13 +207,18 @@ export default class BetterPluginsPagePlugin extends Plugin {
 	// Function to add the "Hide" and "Show" buttons to all community item cards
 	addHideButtons(cards: JQuery<HTMLElement>) {
 		cards.each((index, element) => {
+			const card = element;
 			const isInstalledPlugin =
 				$(element).find(
 					".community-item-name .flair.mod-pop:contains('Installed')"
 				).length > 0;
 
+			// if (isInstalledPlugin) {
+			// 	const itemName = getName(card);
+			// 	console.log("isInstalledPlugin", isInstalledPlugin, itemName);
+			// }
+
 			if (!isInstalledPlugin) {
-				const card = element;
 				// Check if the "Hide" button already exists in the card
 				let hideButton = card.querySelector(
 					".hide-button"
@@ -279,7 +291,6 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		// Update the hidden plugins setting
 		this.settingManager.updateSettings((setting) => {
 			setting.value.hiddenPlugins = newHiddenPlugins;
-			this.hiddenPlugins = currentHiddenPlugins;
 			// console.log("hiddenPlugins", this.hiddenPlugins);
 			this.debouncedFilterHiddenPlugins();
 		});
@@ -310,6 +321,11 @@ export default class BetterPluginsPagePlugin extends Plugin {
 			childList: true,
 			subtree: true,
 		});
+
+		// set timeout 500 ms and then trigger the filtering
+		setTimeout(() => {
+			this.debouncedFilterHiddenPlugins();
+		}, 500);
 	}
 
 	onunload() {

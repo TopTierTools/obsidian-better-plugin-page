@@ -1,5 +1,6 @@
 import { Setting } from "obsidian";
 import BetterPluginsPagePlugin from "./main";
+import { getHiddenPlugins } from "@/getHiddenPlugins";
 
 export class CommonSetting {
 	plugin: BetterPluginsPagePlugin;
@@ -21,6 +22,8 @@ export class CommonSetting {
 						this.plugin.settingManager.updateSettings((setting) => {
 							setting.value.hiddenPlugins = value;
 						});
+						// console.log("hiddenPlugins", this.plugin.hiddenPlugins);
+						this.plugin.debouncedFilterHiddenPlugins();
 					})
 			);
 

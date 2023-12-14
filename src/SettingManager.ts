@@ -5,6 +5,7 @@ import { createNotice } from "@/util/createNotice";
 import { State } from "@/util/State";
 import { Plugin } from "obsidian";
 import { z } from "zod";
+import { getHiddenPlugins } from "@/getHiddenPlugins";
 
 export type Setting = Prettify<z.TypeOf<typeof SettingSchema>>;
 
@@ -43,11 +44,16 @@ export class MySettingManager implements ISettingManager<Setting> {
 		// save the setting to json
 		this.asyncQueue.push(this.saveSettings.bind(this));
 		// return the updated setting
-		return this.setting.value;
+		return this.getSettings();
 	}
 
-	getSettings(): Setting {
-		return this.setting.value;
+	getSettings() {
+		return {
+			...this.setting.value,
+			hiddenPluginsArray: getHiddenPlugins(
+				this.setting.value.hiddenPlugins
+			),
+		};
 	}
 
 	/**

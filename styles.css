@@ -48,3 +48,20 @@
 .better-plugin-page-download-count-filtered {
 	display: none;
 }
+
+.better-plugins-page-plugin-setting-button-group {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-end;
+}
+
+/* Add margin to create a 10px gap between flex items */
+.better-plugins-page-plugin-setting-button-group > * {
+	margin-right: 10px; /* Adjust as needed */
+}
+
+/* Remove the margin from the last item to prevent extra spacing */
+.better-plugins-page-plugin-setting-button-group > :last-child {
+	margin-right: 0;
+}

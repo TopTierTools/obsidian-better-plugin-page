@@ -1,4 +1,4 @@
-import { Modal, Setting } from "obsidian";
+import { ButtonComponent, Modal, Setting } from "obsidian";
 import { CommonSetting } from "./CommonSetting";
 import BetterPluginsPagePlugin from "./main";
 
@@ -125,6 +125,44 @@ export class FilterModal extends Modal {
 
 		const commonSetting = new CommonSetting(this.plugin);
 		commonSetting.createHiddenPluginsSetting(contentEl);
+
+		// add a button group to the modal
+		const buttonGroup = contentEl.createDiv("button-group");
+		buttonGroup.addClasses([
+			"better-plugins-page-plugin-setting-button-group",
+		]);
+		// add a button to the button group
+		const resetButton = new ButtonComponent(buttonGroup)
+			.setButtonText("Reset")
+			.onClick(() => {
+				// reset the local storage
+				localStorage.removeItem("download-count");
+				localStorage.removeItem("download-count-compare");
+				localStorage.removeItem("updated-within");
+				localStorage.removeItem("updated-within-compare");
+				localStorage.removeItem("show-hidden-plugins");
+				// reset the plugin setting
+				this.plugin.settingManager.updateSettings((setting) => {
+					setting.value.hiddenPlugins = "";
+				});
+
+				// reset the whole modal by calling onOpen
+				this.onOpen();
+
+				// trigger filtering
+				this.plugin.debouncedFilterHiddenPlugins();
+			});
+
+		// add a apply button to the button group
+		// const applyButton = new ButtonComponent(buttonGroup)
+		// 	.setButtonText("Apply")
+		// 	.onClick(() => {
+		// 		console.log("apply button clicked");
+		// 		this.plugin.debouncedFilterHiddenPlugins();
+		// 	});
+
+		// add the button groups to the modal
+		contentEl.appendChild(buttonGroup);
 	}
 
 	onClose() {
