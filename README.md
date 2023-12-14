@@ -33,7 +33,7 @@ We only build good softwares. And we follow the 3 big principles (simple, robust
 
 ### Through community plugin store
 
-You can install this on community plugin store 😎
+Waiting for approval: https://github.com/obsidianmd/obsidian-releases/pull/2805
 
 ### Through BRAT
 
@@ -45,7 +45,7 @@ You can install this on community plugin store 😎
 
 1. cd to `.obsidian/plugins`
 2. git clone this repo
-3. `cd obsidian-3d-graph && bun install && bun run build`
+3. `cd obsidian-better-plugin-pages && bun install && bun run build`
 4. there you go 🎉
 
 ## Say thank you
