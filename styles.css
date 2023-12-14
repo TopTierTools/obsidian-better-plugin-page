@@ -40,7 +40,9 @@
 	display: block !important;
 }
 
-.community-item:hover:not(.better-plugins-page-hidden-community-item)
+.community-item:hover:not(.better-plugins-page-hidden-community-item):not(
+		[data-installed="true"]
+	)
 	button.hide-button {
 	display: block !important;
 }

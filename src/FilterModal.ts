@@ -36,7 +36,7 @@ export class FilterModal extends Modal {
 		contentEl.addClasses(["better-plugins-page-plugin-setting-tab"]);
 
 		const updatedFilterDropDown = new Setting(contentEl)
-			.setName("Updated within")
+			.setName("Updated")
 			.addDropdown((dropdown) => {
 				const updatedWithinCompare = localStorage.getItem(
 					"updated-within-compare"

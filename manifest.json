@@ -1,9 +1,9 @@
 {
 	"id": "better-plugins-page",
 	"name": "Better Plugins Page",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
-	"description": "Better Plugins Page for Obsidian, adding filtering functions",
+	"description": "Better Plugins Page for Obsidian, add filtering and hiding to the page",
 	"author": "HananoshikaYomaru",
 	"authorUrl": "https://yomaru.dev",
 	"fundingUrl": {

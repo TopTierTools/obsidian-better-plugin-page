@@ -230,6 +230,8 @@ export default class BetterPluginsPagePlugin extends Plugin {
 			// }
 
 			if (!isInstalledPlugin) {
+				// Remove the data-installed attribute from the card
+				card.removeAttribute("data-installed");
 				// Check if the "Hide" button already exists in the card
 				let hideButton = card.querySelector(
 					".hide-button"
@@ -268,6 +270,9 @@ export default class BetterPluginsPagePlugin extends Plugin {
 					card.appendChild(hideButton);
 					card.appendChild(showButton);
 				}
+			} else {
+				// add data-installed attribute to the card
+				card.setAttribute("data-installed", "true");
 			}
 		});
 	}
