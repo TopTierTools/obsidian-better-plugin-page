@@ -1,6 +1,6 @@
 {
   "name": "obsidian-better-plugins-page",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Better Plugins Page for Obsidian, add filtering and hiding to the page",
   "main": "main.js",
   "scripts": {
