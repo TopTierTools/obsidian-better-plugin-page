@@ -1,4 +1,4 @@
-import { App, PluginSettingTab } from "obsidian";
+import { App, PluginSettingTab, Setting } from "obsidian";
 import BetterPluginsPagePlugin from "./main";
 import { CommonSetting } from "./CommonSetting";
 
@@ -18,5 +18,23 @@ export class BetterPluginsPagePluginSettingTab extends PluginSettingTab {
 
 		const commonSetting = new CommonSetting(this.plugin);
 		commonSetting.createHiddenPluginsSetting(containerEl);
+		commonSetting.createSavedPluginsSetting(containerEl);
+
+		// add a toggle for enabling the plugin note feature
+		new Setting(containerEl)
+			.setName("Enable plugin note feature")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(
+						this.plugin.settingManager.getSettings()
+							.pluginNoteFeatureEnabled
+					)
+					.onChange(async (value) => {
+						this.plugin.settingManager.updateSettings((setting) => {
+							setting.value.pluginNoteFeatureEnabled = value;
+						});
+						this.plugin.modalContentObserver?.disconnect();
+					});
+			});
 	}
 }

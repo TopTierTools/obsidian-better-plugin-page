@@ -29,7 +29,7 @@ We only build good softwares. And we follow the 3 big principles (simple, robust
 7. **Filter by User Download Count**: Gain insights into the popularity of community plugins by filtering them based on their download count. This feature enables you to discover plugins that are widely used and trusted by the Obsidian community.
 8. **Saved plugin**, Save your favorite plugins and access them conveniently within Obsidian. Keep a curated list of plugins that enhance your productivity and creativity.
 9. **Filter by Saved Plugin**, Only see your favourite plugins
-10. **Plugin note**, Add notes and annotations to plugins for easy reference. Keep track of your thoughts, tips, and ideas related to each plugin.
+10. **Plugin note**, Add notes and annotations to plugins for easy reference. Keep track of your thoughts, tips, and ideas related to each plugin. If you don't want this feature, you can turn this off in the plugin setting tab.
 
 ## Installation
 

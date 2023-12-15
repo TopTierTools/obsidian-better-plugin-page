@@ -18,6 +18,7 @@ import { getPlugins } from "./getPlugins";
 import { getName, prunedName } from "./getName";
 import { getUpdatedWithinMilliseconds } from "./getUpdatedWithinMilliseconds";
 import { NoticeManager } from "@/NoticeManager";
+import { BetterPluginsPagePluginSettingTab } from "@/BetterPluginsPagePluginSettingTab";
 
 export default class BetterPluginsPagePlugin extends Plugin {
 	settingManager: MySettingManager;
@@ -54,9 +55,9 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		// this.addSettingTab(
-		// 	new BetterPluginsPagePluginSettingTab(this.app, this)
-		// );
+		this.addSettingTab(
+			new BetterPluginsPagePluginSettingTab(this.app, this)
+		);
 
 		this.isPluginsPagePresentObserver = observeIsPresent(
 			"div.mod-community-modal",
@@ -74,7 +75,7 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		// Disconnect the observer
 		this.communityItemsObserver.disconnect();
 		// Disconnect the modal content observer
-		this.modalContentObserver.disconnect();
+		this.modalContentObserver?.disconnect();
 	};
 
 	openPluginsPage() {
@@ -492,16 +493,17 @@ export default class BetterPluginsPagePlugin extends Plugin {
 			subtree: true,
 		});
 
-		this.modalContentObserver = observeIsPresent(
-			".community-modal-details .community-modal-info-name",
-			(isPresent) => {
-				if (isPresent) {
-					this.onPluginDetailsShow();
-				} else {
-					// dummy
+		if (this.settingManager.getSettings().pluginNoteFeatureEnabled)
+			this.modalContentObserver = observeIsPresent(
+				".community-modal-details .community-modal-info-name",
+				(isPresent) => {
+					if (isPresent) {
+						this.onPluginDetailsShow();
+					} else {
+						// dummy
+					}
 				}
-			}
-		);
+			);
 
 		// set timeout 500 ms and then trigger the filtering
 		setTimeout(() => {

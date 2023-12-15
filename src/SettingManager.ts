@@ -117,4 +117,5 @@ export const DEFAULT_SETTING: Setting = {
 	hiddenPlugins: "",
 	savedPlugins: "",
 	pluginNoteCache: {},
+	pluginNoteFeatureEnabled: true,
 };
