@@ -64,7 +64,6 @@ export class MySettingManager implements ISettingManager<Setting> {
 		const loadedData = (await this.plugin.loadData()) as unknown | null;
 
 		// console.log("loaded: ", loadedData);
-		await this.saveSettings();
 
 		// if the data is null, then we need to initialize the data
 		if (!loadedData) {
