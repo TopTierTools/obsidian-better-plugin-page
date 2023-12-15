@@ -213,10 +213,11 @@ export default class BetterPluginsPagePlugin extends Plugin {
 				);
 				this.addButtons(communityItems as HTMLElement[]);
 				const visiblePlugins = communityItems.filter(
-					(element) =>
+					(element: HTMLDivElement) =>
 						!element.classList.contains(
 							"better-plugins-page-hidden-community-item"
-						)
+							// and not display: none
+						) && element.style.display !== "none"
 				).length;
 				summaryText?.setText(`Showing ${visiblePlugins} plugins:`);
 			}
