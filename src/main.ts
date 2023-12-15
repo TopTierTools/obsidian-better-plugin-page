@@ -137,7 +137,9 @@ export default class BetterPluginsPagePlugin extends Plugin {
 							.find(".community-item-downloads-text")
 							.text()
 							.replace(/,/g, "");
-						const itemDownloads = parseInt(downloadsText, 10);
+						const itemDownloads = downloadsText
+							? parseInt(downloadsText, 10)
+							: 0;
 
 						if (
 							(downloadCountCompare === "greater" &&
@@ -364,7 +366,11 @@ export default class BetterPluginsPagePlugin extends Plugin {
 
 		const notes = this.app.vault
 			.getMarkdownFiles()
-			.filter((file) => file.basename === pluginName);
+			.filter(
+				(file) =>
+					file.basename.toLocaleLowerCase() ===
+					pluginName.toLocaleLowerCase()
+			);
 		if (notes.length === 0) return null;
 		if (notes.length > 1) {
 			this.noticeManager.createNotice(
@@ -414,20 +420,29 @@ export default class BetterPluginsPagePlugin extends Plugin {
 				);
 
 				button.addEventListener("click", async () => {
-					if (!note) {
-						const newNote = await this.app.vault.create(
-							`${pluginName}.md`,
-							""
-						);
-						this.app.workspace.getLeaf().openFile(newNote);
-					} else {
-						this.app.workspace.getLeaf().openFile(note);
-					}
+					try {
+						if (!note) {
+							const newNote = await this.app.vault.create(
+								`${pluginName}.md`,
+								""
+							);
+							this.app.workspace.getLeaf().openFile(newNote);
+						} else {
+							this.app.workspace.getLeaf().openFile(note);
+						}
 
-					const closeButton = $(
-						".modal-container .modal-close-button"
-					) as JQuery<HTMLButtonElement>;
-					closeButton.trigger("click");
+						const closeButton = $(
+							".modal-container .modal-close-button"
+						) as JQuery<HTMLButtonElement>;
+						closeButton.trigger("click");
+					} catch (e) {
+						console.error(e);
+						this.noticeManager.createNotice(
+							"Failed to create note. Please check the console for more details.",
+							5000,
+							"error"
+						);
+					}
 				});
 
 				communityModalButtonContainer.appendChild(button);
