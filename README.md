@@ -2,6 +2,8 @@
 
 ![CleanShot 2023-12-14 at 10 56 59@2x](https://github.com/TopTierTools/obsidian-better-plugin-page/assets/43137033/53fadbfa-440b-4f66-8e4c-c2ba14353d36)
 
+![658shots_so](https://github.com/TopTierTools/obsidian-better-plugin-page/assets/43137033/dea8a916-be00-42a2-b96a-8d30791ffee8)
+
 The "Better Plugins Page" plugin enhances the user experience when managing plugins in Obsidian by providing additional features and options for organizing and filtering community plugins. This plugin is designed to help users easily discover, hide, save, and filter plugins based on their preferences. This plugin also add plugin note feature to encourage people write note about how they use their plugins.
 
 See the demo: <https://www.youtube.com/watch?v=yzxMBsgt0Jo&ab_channel=YomaruHananoshika>
