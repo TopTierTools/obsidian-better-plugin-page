@@ -1,17 +1,27 @@
 .better-plugins-page-plugin-setting-tab {
-	padding-top: 20px;
+	/* padding-top: 20px; */
 
-	.hidden-plugins-setting {
+	.hidden-plugins-setting,
+	.saved-plugins-setting {
 		flex-direction: column;
 		align-items: stretch;
 	}
 
-	.hidden-plugins-setting textarea {
+	.hidden-plugins-setting textarea,
+	.saved-plugins-setting textarea {
 		margin-top: 10px;
 		min-width: 100%;
 		max-width: 100%;
 		width: 100%;
-		min-height: 200px;
+		min-height: 120px;
+	}
+
+	> h2 {
+		color: var(--interactive-accent) !important;
+	}
+
+	> h2 + .setting-item {
+		border-top: 0px;
 	}
 }
 
@@ -20,31 +30,44 @@
 	opacity: 0.4;
 }
 
+.community-item:not(:hover) .buttons-container {
+	display: none;
+}
+
+.community-item .buttons-container {
+	flex-direction: column;
+	align-items: flex-start;
+}
+
 /* Hide the button by default */
-.community-item button {
+.community-item .buttons-container button {
 	display: none !important;
 }
 
 /* Show the button when hovering over the card */
-.community-item:hover button {
+.community-item:hover .buttons-container {
 	/* You can style the button as needed */
 	/* For example, you can set its position to the top right corner */
 	position: absolute;
 	top: 10px;
 	right: 10px;
-	cursor: pointer;
 }
 
 .community-item.better-plugins-page-hidden-community-item:hover
-	button.show-button {
-	display: block !important;
-}
-
+	button.show-button,
 .community-item:hover:not(.better-plugins-page-hidden-community-item):not(
 		[data-installed="true"]
 	)
-	button.hide-button {
+	button.hide-button,
+.community-item.better-plugins-page-hidden-community-item:hover
+	.buttons-container,
+.community-item[data-saved="false"]:hover button.save-button,
+.community-item[data-saved="true"]:hover button.unsave-button {
 	display: block !important;
+}
+
+.community-item .buttons-container button {
+	cursor: pointer;
 }
 
 .better-plugin-page-download-count-filtered {

@@ -24,16 +24,34 @@ export enum DownloadCountCompareOption {
 
 export class FilterModal extends Modal {
 	plugin: BetterPluginsPagePlugin;
+	commonSetting: CommonSetting;
 
 	constructor(plugin: BetterPluginsPagePlugin) {
 		super(plugin.app);
 		this.plugin = plugin;
+		this.commonSetting = new CommonSetting(plugin);
 	}
 
 	onOpen() {
+		// sort the setting manager hidden pages value
+		this.plugin.settingManager.updateSettings((setting) => {
+			setting.value.hiddenPlugins = setting.value.hiddenPlugins
+				.split("\n")
+				.sort()
+				.join("\n");
+
+			setting.value.savedPlugins = setting.value.savedPlugins
+				.split("\n")
+				.sort()
+				.join("\n");
+		});
+
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClasses(["better-plugins-page-plugin-setting-tab"]);
+
+		// add a heading 2
+		contentEl.createEl("h2", { text: "Filter", cls: "test" });
 
 		const updatedFilterDropDown = new Setting(contentEl)
 			.setName("Updated")
@@ -61,7 +79,7 @@ export class FilterModal extends Modal {
 							value.toString()
 						);
 						// Trigger filtering when the dropdown changes
-						this.plugin.debouncedFilterHiddenPlugins();
+						this.plugin.debouncedFilterPlugins();
 					});
 			})
 			.addDropdown((dropdown) => {
@@ -103,12 +121,12 @@ export class FilterModal extends Modal {
 							value.toString()
 						);
 						// Trigger filtering when the dropdown changes
-						this.plugin.debouncedFilterHiddenPlugins();
+						this.plugin.debouncedFilterPlugins();
 					});
 			});
 
 		const downloadCountDropDown = new Setting(contentEl)
-			.setName("Download Count")
+			.setName("Download count")
 			.addDropdown((dropdown) => {
 				const downloadCountCompare = localStorage.getItem(
 					"download-count-compare"
@@ -135,7 +153,7 @@ export class FilterModal extends Modal {
 							value.toString()
 						);
 						// Trigger filtering when the dropdown changes
-						this.plugin.debouncedFilterHiddenPlugins();
+						this.plugin.debouncedFilterPlugins();
 					});
 			})
 			.addText((text) => {
@@ -152,9 +170,41 @@ export class FilterModal extends Modal {
 							value.toString()
 						);
 						// Trigger filtering when the dropdown changes
-						this.plugin.debouncedFilterHiddenPlugins();
+						this.plugin.debouncedFilterPlugins();
 					});
 			});
+
+		// add a toggle to the modal
+		const showSavedPluginToggle = new Setting(contentEl)
+			.setName("Only show saved plugins")
+			.addToggle((toggle) => {
+				const onlyShowSavedPlugins =
+					localStorage.getItem("show-saved-plugins");
+
+				// parse the value to boolean, by default is false
+				const onlyShowSavedPluginBool =
+					onlyShowSavedPlugins === "true" ? true : false;
+				return toggle
+					.setValue(onlyShowSavedPluginBool)
+					.onChange(async (value) => {
+						// store the value in local storage
+						localStorage.setItem(
+							"show-saved-plugins",
+							value.toString()
+						);
+
+						// Trigger filtering when the toggle changes
+						this.plugin.debouncedFilterPlugins();
+					});
+			});
+		showSavedPluginToggle.settingEl.addClasses([
+			"show-saved-plugins-toggle",
+		]);
+
+		this.commonSetting.createSavedPluginsSetting(contentEl);
+
+		// add a heading 2 to the modal
+		contentEl.createEl("h2", { text: "Hidden plugins" });
 
 		// add a toggle to the modal
 		const toggle = new Setting(contentEl)
@@ -177,13 +227,12 @@ export class FilterModal extends Modal {
 						);
 
 						// Trigger filtering when the toggle changes
-						this.plugin.debouncedFilterHiddenPlugins();
+						this.plugin.debouncedFilterPlugins();
 					});
 			});
 		toggle.settingEl.addClasses(["show-hidden-plugins-toggle"]);
 
-		const commonSetting = new CommonSetting(this.plugin);
-		commonSetting.createHiddenPluginsSetting(contentEl);
+		this.commonSetting.createHiddenPluginsSetting(contentEl);
 
 		// add a button group to the modal
 		const buttonGroup = contentEl.createDiv("button-group");
@@ -200,25 +249,19 @@ export class FilterModal extends Modal {
 				localStorage.removeItem("updated-within");
 				localStorage.removeItem("updated-within-compare");
 				localStorage.removeItem("show-hidden-plugins");
+				localStorage.removeItem("show-saved-plugins");
 				// reset the plugin setting
 				this.plugin.settingManager.updateSettings((setting) => {
 					setting.value.hiddenPlugins = "";
+					setting.value.savedPlugins = "";
 				});
 
 				// reset the whole modal by calling onOpen
 				this.onOpen();
 
 				// trigger filtering
-				this.plugin.debouncedFilterHiddenPlugins();
+				this.plugin.debouncedFilterPlugins();
 			});
-
-		// add a apply button to the button group
-		// const applyButton = new ButtonComponent(buttonGroup)
-		// 	.setButtonText("Apply")
-		// 	.onClick(() => {
-		// 		console.log("apply button clicked");
-		// 		this.plugin.debouncedFilterHiddenPlugins();
-		// 	});
 
 		// add the button groups to the modal
 		contentEl.appendChild(buttonGroup);

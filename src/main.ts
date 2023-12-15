@@ -1,4 +1,5 @@
-import { Plugin, setIcon, setTooltip } from "obsidian";
+import { Notice, setIcon, setTooltip, Plugin, TFile } from "obsidian";
+
 import "@total-typescript/ts-reset";
 import "@total-typescript/ts-reset/dom";
 import { MySettingManager } from "@/SettingManager";
@@ -13,13 +14,17 @@ import {
 	UpdatedFilterOption,
 	UpdatedTimeRangeOption,
 } from "./FilterModal";
-import { getHiddenPlugins } from "./getHiddenPlugins";
-import { getName } from "./getName";
+import { getPlugins } from "./getPlugins";
+import { getName, prunedName } from "./getName";
 import { getUpdatedWithinMilliseconds } from "./getUpdatedWithinMilliseconds";
+import { NoticeManager } from "@/NoticeManager";
 
 export default class BetterPluginsPagePlugin extends Plugin {
 	settingManager: MySettingManager;
+	noticeManager: NoticeManager;
+
 	isPluginsPagePresentObserver: MutationObserver;
+	modalContentObserver: MutationObserver;
 	lock = false;
 
 	// we need this observer to observe the search results changes
@@ -28,15 +33,15 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		for (const mutation of mutationsList) {
 			if (mutation.type === "childList") {
 				if (this.lock) return;
-				this.debouncedFilterHiddenPlugins();
-				// console.log("communityItemsObserver", mutationsList);
+				this.debouncedFilterPlugins();
 			}
 		}
 	});
 
 	async onload() {
-		// initialize the setting manager
+		// initialize the setting manager and notice manager
 		this.settingManager = new MySettingManager(this);
+		this.noticeManager = new NoticeManager(this);
 
 		// load the setting using setting manager
 		await this.settingManager.loadSettings();
@@ -68,6 +73,8 @@ export default class BetterPluginsPagePlugin extends Plugin {
 	onPluginsPageClose = () => {
 		// Disconnect the observer
 		this.communityItemsObserver.disconnect();
+		// Disconnect the modal content observer
+		this.modalContentObserver.disconnect();
 	};
 
 	openPluginsPage() {
@@ -84,7 +91,7 @@ export default class BetterPluginsPagePlugin extends Plugin {
 		browseButton.trigger("click");
 	}
 
-	debouncedFilterHiddenPlugins = debounce(
+	debouncedFilterPlugins = debounce(
 		() => {
 			const that = this;
 			const communityItems = $(".community-item");
@@ -96,6 +103,7 @@ export default class BetterPluginsPagePlugin extends Plugin {
 					DownloadCountCompareOption.greater;
 				const downloadCount =
 					localStorage.getItem("download-count") ?? "";
+				const downloadCountValue = parseInt(downloadCount, 10);
 
 				const updatedWithinCompare =
 					localStorage.getItem("updated-within-compare") ??
@@ -104,19 +112,31 @@ export default class BetterPluginsPagePlugin extends Plugin {
 					localStorage.getItem("updated-within") ??
 					UpdatedTimeRangeOption.none;
 
-				const downloadCountValue = parseInt(downloadCount, 10);
+				const onlyShowSavedPlugins =
+					localStorage.getItem("show-saved-plugins") === "true";
 
 				if (
 					this.settingManager.getSettings().hiddenPluginsArray
 						.length === 0 &&
 					!downloadCount &&
-					!updatedWithin
+					!updatedWithin &&
+					!onlyShowSavedPlugins
 				) {
 					communityItems
 						.removeClass(
 							"better-plugins-page-hidden-community-item"
 						)
 						.show();
+
+					// add the data-saved attribute to the card
+					communityItems.each(function () {
+						// if the setting saved plugin contains the plugin name, then we set the data-saved attribute to true
+						const itemName = getName(this);
+						const savedPluginsArr =
+							that.settingManager.getSettings().savedPluginsArray;
+						const isSaved = savedPluginsArr.includes(itemName);
+						this.setAttribute("data-saved", isSaved.toString());
+					});
 					return;
 				}
 
@@ -179,6 +199,23 @@ export default class BetterPluginsPagePlugin extends Plugin {
 					}
 
 					const itemName = getName(this);
+
+					const savedPluginsArr =
+						that.settingManager.getSettings().savedPluginsArray;
+					const isSaved = savedPluginsArr.includes(itemName);
+
+					// add the data-saved attribute to the card
+					this.setAttribute("data-saved", isSaved.toString());
+
+					if (onlyShowSavedPlugins && !isSaved) {
+						$(this).hide();
+						return;
+					} else {
+						$(this).show();
+					}
+
+					// now we passed the filtering
+
 					const isHidden = that.settingManager
 						.getSettings()
 						.hiddenPluginsArray.includes(itemName);
@@ -189,23 +226,25 @@ export default class BetterPluginsPagePlugin extends Plugin {
 								"better-plugins-page-hidden-community-item"
 							)
 							.show();
-						return;
-					}
-
-					$(this).toggleClass(
-						"better-plugins-page-hidden-community-item",
+					} else {
+						$(this).toggleClass(
+							"better-plugins-page-hidden-community-item",
+							shouldShowHiddenPlugins
+						);
 						shouldShowHiddenPlugins
-					);
-					shouldShowHiddenPlugins ? $(this).show() : $(this).hide();
+							? $(this).show()
+							: $(this).hide();
+					}
 				});
 			} catch (e) {
+				console.error(e);
 				// Handle the error
 			} finally {
 				this.lock = false;
 				const summaryText = document.querySelector(
 					".community-modal-search-summary"
 				);
-				this.addHideButtons(communityItems);
+				this.addButtons(communityItems);
 				// get the number of visible plugins
 				const visiblePlugins = $(".community-item:visible").length;
 				summaryText?.setText(`Showing ${visiblePlugins} plugins:`);
@@ -216,7 +255,7 @@ export default class BetterPluginsPagePlugin extends Plugin {
 	);
 
 	// Function to add the "Hide" and "Show" buttons to all community item cards
-	addHideButtons(cards: JQuery<HTMLElement>) {
+	addButtons(cards: JQuery<HTMLElement>) {
 		cards.each((index, element) => {
 			const card = element;
 			const isInstalledPlugin =
@@ -224,92 +263,207 @@ export default class BetterPluginsPagePlugin extends Plugin {
 					".community-item-name .flair.mod-pop:contains('Installed')"
 				).length > 0;
 
-			// if (isInstalledPlugin) {
-			// 	const itemName = getName(card);
-			// 	console.log("isInstalledPlugin", isInstalledPlugin, itemName);
-			// }
+			// set the data-installed attribute to the card
+			card.setAttribute("data-installed", isInstalledPlugin.toString());
 
-			if (!isInstalledPlugin) {
-				// Remove the data-installed attribute from the card
-				card.removeAttribute("data-installed");
-				// Check if the "Hide" button already exists in the card
-				let hideButton = card.querySelector(
-					".hide-button"
-				) as HTMLButtonElement;
+			// Check if the buttons container already exists in the card
+			let buttonsContainer = card.querySelector(
+				".buttons-container"
+			) as HTMLDivElement;
 
-				if (!hideButton) {
-					// Create the "Hide" button
-					hideButton = document.createElement("button");
-					hideButton.classList.add("hide-button", "clickable-icon");
-					setIcon(hideButton, "eye-off");
-					setTooltip(hideButton, "Hide");
+			if (!buttonsContainer) {
+				// Create the buttons container with a column layout
+				buttonsContainer = document.createElement("div");
+				buttonsContainer.classList.add("buttons-container");
 
-					// Create the "Show" button
-					const showButton = document.createElement("button");
-					showButton.classList.add("show-button", "clickable-icon");
-					setIcon(showButton, "eye");
-					setTooltip(showButton, "Show");
+				// Define button configurations
+				const buttonConfigs = [
+					{
+						className: "hide-button",
+						icon: "eye-off",
+						tooltip: "Hide",
+						toggle: true,
+						settingKey: "hiddenPlugins",
+					},
+					{
+						className: "show-button",
+						icon: "eye",
+						tooltip: "Show",
+						toggle: false,
+						settingKey: "hiddenPlugins",
+					},
+					{
+						className: "save-button",
+						icon: "star",
+						tooltip: "Save",
+						toggle: true,
+						settingKey: "savedPlugins",
+					},
+					{
+						className: "unsave-button",
+						icon: "star-off",
+						tooltip: "Unsave",
+						toggle: false,
+						settingKey: "savedPlugins",
+					},
+				] as const;
 
-					// Add click event listeners to both buttons
-					hideButton.addEventListener("click", (event) => {
+				buttonConfigs.forEach((config) => {
+					const button = document.createElement("button");
+					button.classList.add(config.className, "clickable-icon");
+					setIcon(button, config.icon);
+					setTooltip(button, config.tooltip);
+
+					button.addEventListener("click", (event) => {
 						event.stopImmediatePropagation();
 						event.stopPropagation();
-						// Get the item name of the community item that this button belongs to
 						const itemName = getName(card);
-						this.toggleHiddenPlugin(itemName, true);
+						this.togglePlugin(
+							itemName,
+							config.toggle,
+							config.settingKey
+						);
 					});
 
-					showButton.addEventListener("click", (event) => {
-						event.stopImmediatePropagation();
-						event.stopPropagation();
-						const itemName = getName(card);
-						this.toggleHiddenPlugin(itemName, false);
-					});
+					// Append the button to the container
+					buttonsContainer.appendChild(button);
+				});
 
-					// Append both buttons to the card
-					card.appendChild(hideButton);
-					card.appendChild(showButton);
-				}
-			} else {
-				// add data-installed attribute to the card
-				card.setAttribute("data-installed", "true");
+				// Append the container to the card
+				card.appendChild(buttonsContainer);
 			}
 		});
 	}
 
 	/**
-	 * Function to toggle a community item to the hidden plugins list.
-	 * If the plugin is already in the hidden plugins list, then it will be removed from the list.
-	 * If the plugin is not in the hidden plugins list, it will be added to the list.
+	 * Function to toggle a community item to the hidden or saved plugins list.
 	 * @param {string} pluginName - The name of the plugin to toggle.
+	 * @param {boolean} toggle - Whether to toggle (hide/save) the plugin.
+	 * @param {string} settingKey - The key for the setting ("hiddenPlugins" or "savedPlugins").
 	 */
-	// Function to toggle a community item to the hidden plugins list
-	toggleHiddenPlugin(pluginName: string, hide: boolean) {
-		const currentHiddenPlugins = getHiddenPlugins(
-			this.settingManager.getSettings().hiddenPlugins
+	togglePlugin(
+		pluginName: string,
+		toggle: boolean,
+		settingKey: "hiddenPlugins" | "savedPlugins"
+	) {
+		const settingValue = getPlugins(
+			this.settingManager.getSettings()[settingKey]
 		);
-		// if hide is true, then we hide the plugin
-		// else we removed the plugin from the hidden plugins list
+		const pluginIndex = settingValue.indexOf(pluginName);
 
-		if (hide) {
-			if (!currentHiddenPlugins.includes(pluginName)) {
-				currentHiddenPlugins.push(pluginName);
-			}
-		} else {
-			const index = currentHiddenPlugins.indexOf(pluginName);
-			if (index !== -1) {
-				currentHiddenPlugins.splice(index, 1);
-			}
+		if (toggle && pluginIndex === -1) {
+			settingValue.push(pluginName);
+		} else if (!toggle && pluginIndex !== -1) {
+			settingValue.splice(pluginIndex, 1);
 		}
 
-		const newHiddenPlugins = currentHiddenPlugins.join("\n");
+		this.updateSettingAndFilter(settingValue, settingKey);
+	}
 
-		// Update the hidden plugins setting
+	/**
+	 * Update the setting and trigger the filter function.
+	 * @param {string[]} updatedSetting - The updated setting array (hidden or saved plugins).
+	 * @param {string} settingKey - The key for the setting ("hiddenPlugins" or "savedPlugins").
+	 */
+	updateSettingAndFilter(
+		updatedSetting: string[],
+		settingKey: "hiddenPlugins" | "savedPlugins"
+	) {
+		const newSetting = updatedSetting.join("\n");
+
+		// Update the corresponding setting
 		this.settingManager.updateSettings((setting) => {
-			setting.value.hiddenPlugins = newHiddenPlugins;
-			// console.log("hiddenPlugins", this.hiddenPlugins);
-			this.debouncedFilterHiddenPlugins();
+			setting.value[settingKey] = newSetting;
+			this.debouncedFilterPlugins();
 		});
+	}
+
+	tryGetNote = (pluginName: string) => {
+		// get the note path from the setting cache
+		// const notePath =
+		// 	this.settingManager.getSettings().pluginNoteCache[pluginName];
+
+		// try to get the note from the path
+		// const note = this.app.vault.getAbstractFileByPath(
+		// 	notePath ?? ""
+		// ) as TFile | null;
+
+		// get the note with title equal to pluginName
+		// if the note doesn't exist, then simply return
+		// if the note exists, then we create a button to link to the note
+		// if (note) return note;
+
+		const notes = this.app.vault
+			.getMarkdownFiles()
+			.filter((file) => file.basename === pluginName);
+		if (notes.length === 0) return null;
+		if (notes.length > 1) {
+			this.noticeManager.createNotice(
+				"There are multiple plugin notes with the same name. Open the first note discovered. But please rename the notes to be unique.",
+				5000,
+				"warning"
+			);
+		}
+
+		const targetNote = notes[0]!;
+		// save this note path to the setting cache
+		this.settingManager.updateSettings((setting) => {
+			setting.value.pluginNoteCache[pluginName] = targetNote.path;
+		});
+		return targetNote;
+	};
+
+	onPluginDetailsShow() {
+		const communityModalButtonContainer = document.querySelector(
+			"div.community-modal-button-container"
+		) as HTMLDivElement;
+
+		if (!communityModalButtonContainer) return;
+
+		const existingButton = communityModalButtonContainer.querySelector(
+			".add-note-link-button"
+		);
+
+		if (!existingButton) {
+			const pluginNameElement = document.querySelector(
+				".community-modal-info-name"
+			);
+
+			if (!pluginNameElement) return;
+
+			const pluginName = prunedName(pluginNameElement.textContent || "");
+
+			if (pluginName) {
+				const note = this.tryGetNote(pluginName);
+
+				const button = document.createElement("button");
+				button.classList.add("add-note-link-button");
+				button.textContent = note ? "My Note" : "Create Note";
+				setTooltip(
+					button,
+					note ? note.path : `Create ${pluginName}.md`
+				);
+
+				button.addEventListener("click", async () => {
+					if (!note) {
+						const newNote = await this.app.vault.create(
+							`${pluginName}.md`,
+							""
+						);
+						this.app.workspace.getLeaf().openFile(newNote);
+					} else {
+						this.app.workspace.getLeaf().openFile(note);
+					}
+
+					const closeButton = $(
+						".modal-container .modal-close-button"
+					) as JQuery<HTMLButtonElement>;
+					closeButton.trigger("click");
+				});
+
+				communityModalButtonContainer.appendChild(button);
+			}
+		}
 	}
 
 	onPluginsPageShow() {
@@ -338,11 +492,26 @@ export default class BetterPluginsPagePlugin extends Plugin {
 			subtree: true,
 		});
 
+		this.modalContentObserver = observeIsPresent(
+			".community-modal-details .community-modal-info-name",
+			(isPresent) => {
+				if (isPresent) {
+					this.onPluginDetailsShow();
+				} else {
+					// dummy
+				}
+			}
+		);
+
 		// set timeout 500 ms and then trigger the filtering
 		setTimeout(() => {
-			this.debouncedFilterHiddenPlugins();
+			this.debouncedFilterPlugins();
 		}, 500);
 	}
+
+	createNotice = (
+		...props: Parameters<NoticeManager["createNotice"]>
+	): Notice => this.noticeManager.createNotice(...props);
 
 	onunload() {
 		super.onunload();

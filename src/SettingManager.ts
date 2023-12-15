@@ -1,11 +1,12 @@
 import { ISettingManager } from "@/Interfaces";
 import { AsyncQueue } from "@/util/AsyncQueue";
 import { SettingSchema } from "@/SettingsSchemas";
-import { createNotice } from "@/util/createNotice";
+
 import { State } from "@/util/State";
-import { Plugin } from "obsidian";
+
 import { z } from "zod";
-import { getHiddenPlugins } from "@/getHiddenPlugins";
+import { getPlugins } from "@/getPlugins";
+import { Plugin } from "@/Interfaces";
 
 export type Setting = Prettify<z.TypeOf<typeof SettingSchema>>;
 
@@ -50,9 +51,8 @@ export class MySettingManager implements ISettingManager<Setting> {
 	getSettings() {
 		return {
 			...this.setting.value,
-			hiddenPluginsArray: getHiddenPlugins(
-				this.setting.value.hiddenPlugins
-			),
+			hiddenPluginsArray: getPlugins(this.setting.value.hiddenPlugins),
+			savedPluginsArray: getPlugins(this.setting.value.savedPlugins),
 		};
 	}
 
@@ -64,6 +64,7 @@ export class MySettingManager implements ISettingManager<Setting> {
 		const loadedData = (await this.plugin.loadData()) as unknown | null;
 
 		// console.log("loaded: ", loadedData);
+		await this.saveSettings();
 
 		// if the data is null, then we need to initialize the data
 		if (!loadedData) {
@@ -76,7 +77,7 @@ export class MySettingManager implements ISettingManager<Setting> {
 		const result = SettingSchema.safeParse(loadedData);
 		// the data schema is wrong or the data is corrupted, then we need to initialize the data
 		if (!result.success) {
-			createNotice(corruptedMessage);
+			this.plugin.createNotice(corruptedMessage);
 			console.warn("parsed loaded data failed", result.error.flatten());
 			this.isLoaded = false;
 			this.setting.value = DEFAULT_SETTING;
@@ -98,7 +99,7 @@ export class MySettingManager implements ISettingManager<Setting> {
 			const result = SettingSchema.safeParse(this.setting.value);
 
 			if (!result.success) {
-				createNotice(corruptedMessage);
+				this.plugin.createNotice(corruptedMessage);
 				console.warn(
 					"parsed loaded data failed",
 					result.error.flatten()
@@ -115,4 +116,6 @@ export class MySettingManager implements ISettingManager<Setting> {
 
 export const DEFAULT_SETTING: Setting = {
 	hiddenPlugins: "",
+	savedPlugins: "",
+	pluginNoteCache: {},
 };

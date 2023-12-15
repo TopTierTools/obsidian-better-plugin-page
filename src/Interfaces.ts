@@ -1,3 +1,5 @@
+import { NoticeManager } from "@/NoticeManager";
+import type { Notice, Plugin as _Plugin } from "obsidian";
 export interface ISettingManager<SettingType = unknown> {
 	/**
 	 * save settings
@@ -22,4 +24,13 @@ export interface ISettingManager<SettingType = unknown> {
 	 * return the settings of the plugin
 	 */
 	loadSettings(): Promise<SettingType>;
+}
+
+export interface Plugin extends _Plugin {
+	settingManager: ISettingManager;
+	noticeManager: NoticeManager;
+	createNotice: (
+		message: string | DocumentFragment,
+		duration?: number | undefined
+	) => Notice;
 }
