@@ -94,61 +94,46 @@ export default class BetterPluginsPagePlugin extends Plugin {
 
 	debouncedFilterPlugins = debounce(
 		() => {
-			const that = this;
-			const communityItems = $(".community-item");
+			// Get all community items and store them in an array
+			const communityItems = Array.from(
+				document.querySelectorAll(".community-item")
+			);
 			try {
 				this.lock = true;
-				// console.log("debouncedFilterHiddenPlugins");
+
+				// Get filter options from localStorage
 				const downloadCountCompare =
 					localStorage.getItem("download-count-compare") ??
 					DownloadCountCompareOption.greater;
-				const downloadCount =
-					localStorage.getItem("download-count") ?? "";
-				const downloadCountValue = parseInt(downloadCount, 10);
-
+				const downloadCount = parseInt(
+					localStorage.getItem("download-count") ?? "0",
+					10
+				);
 				const updatedWithinCompare =
 					localStorage.getItem("updated-within-compare") ??
 					UpdatedFilterOption.Within;
 				const updatedWithin =
 					localStorage.getItem("updated-within") ??
 					UpdatedTimeRangeOption.none;
-
 				const onlyShowSavedPlugins =
 					localStorage.getItem("show-saved-plugins") === "true";
+				const showHiddenPlugins =
+					localStorage.getItem("show-hidden-plugins") === "true";
 
-				if (
-					this.settingManager.getSettings().hiddenPluginsArray
-						.length === 0 &&
-					!downloadCount &&
-					!updatedWithin &&
-					!onlyShowSavedPlugins
-				) {
-					communityItems
-						.removeClass(
-							"better-plugins-page-hidden-community-item"
-						)
-						.show();
+				// Get settings from the setting manager
+				const settings = this.settingManager.getSettings();
 
-					// add the data-saved attribute to the card
-					communityItems.each(function () {
-						// if the setting saved plugin contains the plugin name, then we set the data-saved attribute to true
-						const itemName = getName(this);
-						const savedPluginsArr =
-							that.settingManager.getSettings().savedPluginsArray;
-						const isSaved = savedPluginsArr.includes(itemName);
-						this.setAttribute("data-saved", isSaved.toString());
-					});
-					return;
-				}
+				communityItems.forEach((element) => {
+					const jElement = $(element);
+					const itemName = getName(element as HTMLElement);
 
-				const showHiddenPlugins = localStorage.getItem(
-					"show-hidden-plugins"
-				);
-				const shouldShowHiddenPlugins = showHiddenPlugins === "true";
+					// Check if the plugin is saved
+					const isSaved =
+						settings.savedPluginsArray.includes(itemName);
+					element.setAttribute("data-saved", isSaved.toString());
 
-				communityItems.each(function () {
-					if (downloadCountValue) {
-						const downloadsText = $(this)
+					if (downloadCount > 0) {
+						const downloadsText = jElement
 							.find(".community-item-downloads-text")
 							.text()
 							.replace(/,/g, "");
@@ -156,22 +141,19 @@ export default class BetterPluginsPagePlugin extends Plugin {
 
 						if (
 							(downloadCountCompare === "greater" &&
-								itemDownloads <= downloadCountValue) ||
+								itemDownloads <= downloadCount) ||
 							(downloadCountCompare === "less" &&
-								itemDownloads >= downloadCountValue)
+								itemDownloads >= downloadCount)
 						) {
-							$(this).hide();
+							jElement.hide();
 							return;
-						} else {
-							$(this).show();
 						}
 					}
 
 					if (updatedWithin !== UpdatedTimeRangeOption.none) {
 						const updatedWithinMilliseconds =
 							getUpdatedWithinMilliseconds(updatedWithin);
-
-						const updatedText = $(this)
+						const updatedText = jElement
 							.find(".community-item-updated")
 							.text()
 							.replace("Updated ", "");
@@ -191,50 +173,34 @@ export default class BetterPluginsPagePlugin extends Plugin {
 									UpdatedFilterOption.Before &&
 									timeDifference > updatedWithinMilliseconds)
 							) {
-								$(this).show();
+								jElement.show();
 							} else {
-								$(this).hide();
+								jElement.hide();
 								return;
 							}
 						}
 					}
 
-					const itemName = getName(this);
-
-					const savedPluginsArr =
-						that.settingManager.getSettings().savedPluginsArray;
-					const isSaved = savedPluginsArr.includes(itemName);
-
-					// add the data-saved attribute to the card
-					this.setAttribute("data-saved", isSaved.toString());
-
 					if (onlyShowSavedPlugins && !isSaved) {
-						$(this).hide();
+						jElement.hide();
 						return;
-					} else {
-						$(this).show();
 					}
 
-					// now we passed the filtering
-
-					const isHidden = that.settingManager
-						.getSettings()
-						.hiddenPluginsArray.includes(itemName);
+					const isHidden =
+						settings.hiddenPluginsArray.includes(itemName);
 
 					if (!isHidden) {
-						$(this)
+						jElement
 							.removeClass(
 								"better-plugins-page-hidden-community-item"
 							)
 							.show();
 					} else {
-						$(this).toggleClass(
+						jElement.toggleClass(
 							"better-plugins-page-hidden-community-item",
-							shouldShowHiddenPlugins
+							showHiddenPlugins
 						);
-						shouldShowHiddenPlugins
-							? $(this).show()
-							: $(this).hide();
+						showHiddenPlugins ? jElement.show() : jElement.hide();
 					}
 				});
 			} catch (e) {
@@ -245,9 +211,13 @@ export default class BetterPluginsPagePlugin extends Plugin {
 				const summaryText = document.querySelector(
 					".community-modal-search-summary"
 				);
-				this.addButtons(communityItems);
-				// get the number of visible plugins
-				const visiblePlugins = $(".community-item:visible").length;
+				this.addButtons(communityItems as HTMLElement[]);
+				const visiblePlugins = communityItems.filter(
+					(element) =>
+						!element.classList.contains(
+							"better-plugins-page-hidden-community-item"
+						)
+				).length;
 				summaryText?.setText(`Showing ${visiblePlugins} plugins:`);
 			}
 		},
@@ -256,8 +226,8 @@ export default class BetterPluginsPagePlugin extends Plugin {
 	);
 
 	// Function to add the "Hide" and "Show" buttons to all community item cards
-	addButtons(cards: JQuery<HTMLElement>) {
-		cards.each((index, element) => {
+	addButtons(cards: HTMLElement[]) {
+		cards.forEach((element) => {
 			const card = element;
 			const isInstalledPlugin =
 				$(element).find(
